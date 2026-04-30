@@ -14,7 +14,8 @@ Employee time tracking and work log management system
 | 認証 | Auth.js v5 (NextAuth) |
 | バリデーション | Zod |
 | テスト | Vitest + Playwright |
-| インフラ | Docker + Docker Compose |
+| インフラ（デモ） | Vercel (無料枠) + Neon (サーバーレスPostgreSQL、無料枠) |
+| インフラ（本番移行時） | Docker + Docker Compose + セルフホストPostgreSQL |
 
 ## 選定方針
 
@@ -22,7 +23,7 @@ Employee time tracking and work log management system
 - **PostgreSQL + Prisma**: 勤怠集計に必要な複雑なJOIN・集計クエリをRDBで処理、型安全なORMでバグを防止
 - **Auth.js v5**: ロールベースアクセス制御（一般社員 / 管理者）、将来的なSSOにも対応
 - **Zod**: バリデーションスキーマをフロント・バックエンドで共有し、入力チェックを一元化
-- **Docker**: 開発・本番環境を統一し、オンプレミスや任意のクラウドへのデプロイを可能にする
+- **Vercel + Neon（デモ）**: 無料枠でゼロコスト運用。本番移行時はPrismaの接続文字列変更のみでDockerへ移行可能
 
 ## 主な機能（予定）
 
