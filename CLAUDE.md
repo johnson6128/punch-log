@@ -1,28 +1,28 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、リポジトリ内で作業する Claude Code (claude.ai/code) へのガイダンスを提供します。
 
-## Project Overview
+## プロジェクト概要
 
-`punch-log` is an employee time tracking and work log management system. It handles employee clock-in/clock-out (打刻) and associates work hours (工数) with those punch records.
+`punch-log` は社員の打刻と工数を管理するシステムです。社員の出勤・退勤（打刻）を記録し、その打刻セッションに工数を紐付けて管理します。
 
-## Architecture
+## アーキテクチャ
 
-> This section should be updated as the system is built out.
+> システムの構築に合わせて、このセクションを更新してください。
 
-Core domain concepts:
-- **Punch (打刻)**: A clock-in or clock-out event by an employee, with a timestamp and type (in/out).
-- **Work Log / 工数**: Work hours or effort entries linked to a punch session, potentially tagged by project or task.
-- **Employee**: The user performing punches.
+コアドメインの概念:
+- **打刻**: 社員による出勤・退勤イベント。タイムスタンプと種別（出勤/退勤）を持つ。
+- **工数**: 打刻セッションに紐付けられた作業時間・作業内容のエントリ。プロジェクトやタスクでタグ付けされる場合もある。
+- **社員**: 打刻を行うユーザー。
 
-## Commands
+## コマンド
 
-> Add build, lint, test, and run commands here as the project stack is chosen.
+> 技術スタックが決まり次第、ビルド・lint・テストの実行コマンドをここに追記してください。
 
 ```
-# Example placeholders — replace once stack is decided:
-# npm run dev       - start dev server
-# npm test          - run all tests
-# npm test -- <file> - run a single test file
-# npm run lint      - lint the codebase
+# プレースホルダー（スタック決定後に置き換えること）:
+# npm run dev        - 開発サーバー起動
+# npm test           - 全テスト実行
+# npm test -- <file> - 単一テストファイルの実行
+# npm run lint       - リント実行
 ```
