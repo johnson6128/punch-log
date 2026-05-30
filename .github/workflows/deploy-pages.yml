@@ -47,8 +47,6 @@ jobs:
 
   deploy:
     needs: build
-    # main ブランチのみデプロイ（Pages 環境保護ルールに合わせる）
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
