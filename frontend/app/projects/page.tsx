@@ -21,6 +21,34 @@ const STATUS_LABELS: Record<string, string> = {
 
 type Tab = 'projects' | 'worklog' | 'expense' | 'report'
 
+type ProjectFormData = {
+  name: string
+  status: 'proposed' | 'active' | 'completed' | 'closed'
+  startDate: string
+  endDate: string
+  managerId: string
+  memberIds: number[]
+  description: string
+  budgetHours: string
+  budgetExpense: string
+  contingency: string
+  revenueTarget: string
+}
+
+const defaultForm: ProjectFormData = {
+  name: '',
+  status: 'proposed',
+  startDate: '2026-06-01',
+  endDate: '2026-12-31',
+  managerId: '5',
+  memberIds: [],
+  description: '',
+  budgetHours: '',
+  budgetExpense: '',
+  contingency: '',
+  revenueTarget: '',
+}
+
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return <div className={`bg-white rounded-xl border border-gray-100 shadow-sm p-5 ${className}`}>{children}</div>
 }
@@ -55,9 +83,106 @@ export default function ProjectsPage() {
   const [contingencyReason, setContingencyReason] = useState('')
   const [toast, setToast] = useState<string | null>(null)
 
+  const [showProjectForm, setShowProjectForm] = useState(false)
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null)
+  const [form, setForm] = useState<ProjectFormData>(defaultForm)
+  const [nameError, setNameError] = useState<string | null>(null)
+
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000) }
 
   const selectedProj = selectedProject ? projects.find(p => p.id === selectedProject) : null
+
+  const openNewProject = () => {
+    setEditingProjectId(null)
+    setForm(defaultForm)
+    setNameError(null)
+    setShowProjectForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const openEditProject = (p: Project) => {
+    setEditingProjectId(p.id)
+    setForm({
+      name: p.name,
+      status: p.status,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      managerId: String(p.managerId),
+      memberIds: [...p.memberIds],
+      description: p.description,
+      budgetHours: String(p.budgetHours),
+      budgetExpense: String(p.budgetExpense),
+      contingency: String(p.contingency),
+      revenueTarget: String(p.revenueTarget),
+    })
+    setNameError(null)
+    setShowProjectForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const closeProjectForm = () => {
+    setShowProjectForm(false)
+    setEditingProjectId(null)
+    setNameError(null)
+  }
+
+  const saveProject = () => {
+    if (!form.name.trim()) { setNameError('プロジェクト名は必須です'); return }
+    const sameName = projects.filter(p => p.name.trim() === form.name.trim() && p.id !== editingProjectId)
+    if (sameName.some(p => p.status === 'active' || p.status === 'proposed')) {
+      setNameError('同名のアクティブなプロジェクトが既に存在します')
+      return
+    }
+    if (editingProjectId) {
+      setProjects(prev => prev.map(p => p.id !== editingProjectId ? p : {
+        ...p,
+        name: form.name.trim(),
+        status: form.status,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        managerId: Number(form.managerId),
+        memberIds: form.memberIds,
+        description: form.description,
+        budgetHours: Number(form.budgetHours) || p.budgetHours,
+        budgetExpense: Number(form.budgetExpense) || p.budgetExpense,
+        contingency: Number(form.contingency) || p.contingency,
+        revenueTarget: Number(form.revenueTarget) || 0,
+      }))
+      showToast('プロジェクトを更新しました')
+    } else {
+      const maxNum = projects.reduce((max, p) => Math.max(max, parseInt(p.id.replace('PJ-', '')) || 0), 0)
+      const newId = `PJ-${String(maxNum + 1).padStart(3, '0')}`
+      setProjects(prev => [...prev, {
+        id: newId,
+        name: form.name.trim(),
+        status: form.status,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        managerId: Number(form.managerId),
+        memberIds: form.memberIds,
+        description: form.description,
+        budgetHours: Number(form.budgetHours) || 0,
+        budgetExpense: Number(form.budgetExpense) || 0,
+        contingency: Number(form.contingency) || 0,
+        contingencyUsed: 0,
+        revenueTarget: Number(form.revenueTarget) || 0,
+        actualRevenue: 0,
+        actualHours: 0,
+        actualExpense: 0,
+      }])
+      showToast('プロジェクトを作成しました')
+    }
+    closeProjectForm()
+  }
+
+  const toggleMember = (id: number) => {
+    setForm(prev => ({
+      ...prev,
+      memberIds: prev.memberIds.includes(id)
+        ? prev.memberIds.filter(m => m !== id)
+        : [...prev.memberIds, id],
+    }))
+  }
 
   const handleAddExpense = () => {
     if (!newExpense.purchaseNo || !newExpense.amount || !selectedProject) return
@@ -119,9 +244,182 @@ export default function ProjectsPage() {
         ))}
       </div>
 
-      {/* ── Tab: プロジェクト一覧 ─────────────────────────────────────── */}
+      {/* ── Tab: プロジェクト一覧 ─────────────────────────────────────────────── */}
       {tab === 'projects' && (
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <button
+              onClick={openNewProject}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700"
+            >
+              + 新規プロジェクト
+            </button>
+          </div>
+
+          {/* Project form (create / edit) */}
+          {showProjectForm && (
+            <Card className="border-green-200 bg-green-50/30">
+              <h3 className="font-semibold text-gray-800 mb-5">
+                {editingProjectId ? 'プロジェクト編集' : '新規プロジェクト作成'}
+              </h3>
+
+              {/* 基本情報 */}
+              <div className="mb-5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">基本情報</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs text-gray-600 block mb-1">プロジェクト名 <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      className={`border rounded-lg px-3 py-2 text-sm w-full ${nameError ? 'border-red-400' : 'border-gray-300'}`}
+                      placeholder="例: 顧客管理システム改修"
+                      value={form.name}
+                      onChange={e => { setForm(p => ({ ...p, name: e.target.value })); setNameError(null) }}
+                    />
+                    {nameError && <p className="text-xs text-red-500 mt-1">{nameError}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">ステータス</label>
+                    <select
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full bg-white"
+                      value={form.status}
+                      onChange={e => setForm(p => ({ ...p, status: e.target.value as ProjectFormData['status'] }))}
+                    >
+                      <option value="proposed">提案中</option>
+                      <option value="active">実行中</option>
+                      <option value="completed">完了</option>
+                      <option value="closed">クローズ</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">説明</label>
+                    <input
+                      type="text"
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full"
+                      placeholder="プロジェクトの概要"
+                      value={form.description}
+                      onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">開始日</label>
+                    <input
+                      type="date"
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full"
+                      value={form.startDate}
+                      onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">終了日</label>
+                    <input
+                      type="date"
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full"
+                      value={form.endDate}
+                      onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 担当 */}
+              <div className="mb-5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">担当</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">プロジェクト管理者</label>
+                    <select
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full bg-white"
+                      value={form.managerId}
+                      onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}
+                    >
+                      {employees.map(e => (
+                        <option key={e.id} value={e.id}>{e.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-2">メンバー</label>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                      {employees.filter(e => e.active).map(e => (
+                        <label key={e.id} className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={form.memberIds.includes(e.id)}
+                            onChange={() => toggleMember(e.id)}
+                            className="rounded"
+                          />
+                          <span className={form.memberIds.includes(e.id) ? 'text-gray-800 font-medium' : 'text-gray-500'}>
+                            {e.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 予算 */}
+              <div className="mb-5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">予算</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">工数予算（時間）</label>
+                    <input
+                      type="number"
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full"
+                      placeholder="500"
+                      value={form.budgetHours}
+                      onChange={e => setForm(p => ({ ...p, budgetHours: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">経費予算（円）</label>
+                    <input
+                      type="number"
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full"
+                      placeholder="1000000"
+                      value={form.budgetExpense}
+                      onChange={e => setForm(p => ({ ...p, budgetExpense: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">予備費（円）</label>
+                    <input
+                      type="number"
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full"
+                      placeholder="100000"
+                      value={form.contingency}
+                      onChange={e => setForm(p => ({ ...p, contingency: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">売上目標（円）</label>
+                    <input
+                      type="number"
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full"
+                      placeholder="3000000"
+                      value={form.revenueTarget}
+                      onChange={e => setForm(p => ({ ...p, revenueTarget: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={saveProject}
+                  className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700"
+                >
+                  {editingProjectId ? '更新する' : '作成する'}
+                </button>
+                <button onClick={closeProjectForm} className="text-sm text-gray-500 px-4 py-2 hover:text-gray-700">
+                  キャンセル
+                </button>
+              </div>
+            </Card>
+          )}
+
           {projects.map(p => {
             const hoursPct = Math.min(100, Math.round((p.actualHours / p.budgetHours) * 100))
             const expensePct = Math.min(100, Math.round((p.actualExpense / p.budgetExpense) * 100))
@@ -141,9 +439,19 @@ export default function ProjectsPage() {
                       <p className="text-xs text-gray-400 mt-0.5">{p.description}</p>
                     </div>
                   </div>
-                  <div className="text-right text-xs text-gray-400">
-                    <p>{p.startDate} 〜</p>
-                    <p>{p.endDate}</p>
+                  <div className="flex flex-col items-end gap-2 shrink-0 ml-3">
+                    <div className="text-right text-xs text-gray-400">
+                      <p>{p.startDate} 〜</p>
+                      <p>{p.endDate}</p>
+                    </div>
+                    {p.status !== 'closed' && (
+                      <button
+                        onClick={() => openEditProject(p)}
+                        className="text-xs text-blue-600 border border-blue-200 rounded px-2.5 py-1 hover:bg-blue-50 transition-colors"
+                      >
+                        編集
+                      </button>
+                    )}
                   </div>
                 </div>
 

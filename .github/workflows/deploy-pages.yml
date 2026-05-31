@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - claude/frontend-mockup-stubs-YSvJ5
+      - claude/project-creation-editing-1DFjK
   workflow_dispatch:
 
 permissions:
